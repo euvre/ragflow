@@ -19,6 +19,7 @@ import base64
 import functools
 import hashlib
 import logging
+import math
 import os
 import subprocess
 import sys
@@ -131,3 +132,18 @@ async def thread_pool_exec(func, *args, **kwargs):
         func = functools.partial(func, *args, **kwargs)
         return await loop.run_in_executor(_thread_pool_executor(), func)
     return await loop.run_in_executor(_thread_pool_executor(), func, *args)
+
+
+def sanitize_for_json(obj):
+    """Recursively replace NaN and Infinity float values with None so that
+    json.dumps produces valid JSON (JavaScript's JSON.parse cannot handle
+    literal NaN / Infinity)."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [sanitize_for_json(item) for item in obj]
+    return obj

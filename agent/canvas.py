@@ -35,7 +35,7 @@ from api.db.services.llm_service import LLMBundle
 from api.db.services.task_service import has_canceled
 from api.db.joint_services.tenant_model_service import get_tenant_default_model_by_type
 from common.constants import LLMType
-from common.misc_utils import get_uuid, hash_str2int
+from common.misc_utils import get_uuid, hash_str2int, sanitize_for_json
 from common.exceptions import TaskCanceledException
 from rag.prompts.generator import chunks_format
 from rag.utils.redis_conn import REDIS_CONN
@@ -129,7 +129,7 @@ class Graph:
                     dsl["components"][k][c] = json.loads(str(cpn["obj"]))
                     continue
                 dsl["components"][k][c] = deepcopy(cpn[c])
-        return json.dumps(dsl, ensure_ascii=False)
+        return json.dumps(sanitize_for_json(dsl), ensure_ascii=False)
 
     def reset(self):
         self.path = []

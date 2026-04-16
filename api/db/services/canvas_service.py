@@ -18,6 +18,7 @@ import logging
 import time
 from uuid import uuid4
 from agent.canvas import Canvas
+from common.misc_utils import sanitize_for_json
 from api.db import CanvasCategory, TenantPermission
 from api.db.db_models import DB, CanvasTemplate, User, UserCanvas, API4Conversation, UserCanvasVersion
 from api.db.services.api_service import API4ConversationService
@@ -272,7 +273,7 @@ async def completion(tenant_id, agent_id, session_id=None, **kwargs):
                 txt += "<think>"
             elif ans["data"].get("end_to_think", False):
                 txt += "</think>"
-        yield "data:" + json.dumps(ans, ensure_ascii=False) + "\n\n"
+        yield "data:" + json.dumps(sanitize_for_json(ans), ensure_ascii=False) + "\n\n"
 
     conv.message.append({"role": "assistant", "content": txt, "created_at": time.time(), "id": message_id})
     conv.reference = canvas.get_reference()

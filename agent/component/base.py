@@ -26,6 +26,7 @@ from typing import Any, List, Union
 import pandas as pd
 from agent import settings
 from common.connection_utils import timeout
+from common.misc_utils import sanitize_for_json
 
 
 
@@ -94,7 +95,7 @@ class ComponentParamBase(ABC):
         return {name: True for name in self.get_feeded_deprecated_params()}
 
     def __str__(self):
-        return json.dumps(self.as_dict(), ensure_ascii=False)
+        return json.dumps(sanitize_for_json(self.as_dict()), ensure_ascii=False)
 
     def as_dict(self):
         def _recursive_convert_obj_to_dict(obj):
