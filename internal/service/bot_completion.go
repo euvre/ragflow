@@ -527,16 +527,12 @@ func (s *BotService) streamChatbotTurn(
 			}
 			// Reasoning text arrives through two delivery modes: the
 			// plain streaming path emits it as Answer deltas between
-			// the StartToThink/EndToThink markers (chat_pipeline.go
-			// think-state machine), while the tool path
+			// the StartToThink/EndToThink markers, while the tool path
 			// (chat_pipeline.go ChatStreamlyWithTools callback) routes
-			// in-think text through the Reasoning field so the
-			// OpenAI-compat SSE handler can map it to
-			// delta.reasoning_content. Python delivers reasoning as
-			// <think>-wrapped answer stream text in both modes
-			// (rag/llm/chat_model.py), so forward it as stream text
-			// here; dropping it would leave the widget's think block
-			// empty and persist history without the reasoning.
+			// in-think text through the Reasoning field. The chatbot
+			// wire delivers reasoning as answer stream text, so forward
+			// it as a delta: dropping it would leave the widget's think
+			// block empty and persist history without the reasoning.
 			delta := res.Answer
 			if delta == "" {
 				delta = res.Reasoning

@@ -868,11 +868,9 @@ func TestStreamChatbotTurn_ErrorAfterDeltasKeptOnWire(t *testing.T) {
 
 // TestStreamChatbotTurn_ReasoningFieldForwardedAsStreamText covers the
 // tool-path delivery mode: chat_pipeline.go's ChatStreamlyWithTools
-// callback routes in-think text through the Reasoning field (so the
-// OpenAI-compat SSE handler can map it to delta.reasoning_content)
-// instead of Answer deltas. Python delivers the same reasoning as
-// <think>-wrapped answer stream text (rag/llm/chat_model.py), so the
-// iframe wire and the persisted history must carry it too — dropping it
+// callback routes in-think text through the Reasoning field instead of
+// Answer deltas. The turn must forward it as stream text so the iframe
+// wire and the persisted history carry the reasoning — dropping it
 // would leave the widget's think block empty.
 func TestStreamChatbotTurn_ReasoningFieldForwardedAsStreamText(t *testing.T) {
 	db := setupServiceTestDB(t)
