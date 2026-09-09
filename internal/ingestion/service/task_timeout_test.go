@@ -185,6 +185,55 @@ func TestFailWithTimeout_DocSettleFailureKeepsTaskRunning(t *testing.T) {
 	}
 }
 
+// TestRunTask_RedeliveryAfterDocDeleteFailsTaskTerminally pins the other half
+// of the settle-failure contract for the delete=true flow: a task whose
+// document-row settle failed is Nacked for redelivery, and if the document is
+// deleted in the meantime, the retried task must load state fresh (not replay
+// a stale entity), settle terminally FAILED via the task-only markFailed write,
+// and return true so the message is Acked — no infinite redelivery and no
+// write to a document row that no longer exists.
+func TestRunTask_RedeliveryAfterDocDeleteFailsTaskTerminally(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	cleanup := testutil.ReplaceDBForTest(t, db)
+	defer cleanup()
+	_, _, docID, taskID := testutil.SeedTestData(t, db, testutil.WithPipelineID("flow-1"))
+
+	ingestor := newUnitIngestor("test", 1, []string{"pdf"})
+	// runDocumentTask intentionally left at the production default: the retry
+	// must go through LoadFromIngestionTask, which re-reads the document row.
+
+	// The document disappears between the failed settle (Nack) and the
+	// redelivered retry, while the ingestion task row still exists.
+	if err := db.Where("id = ?", docID).Delete(&entity.Document{}).Error; err != nil {
+		t.Fatalf("delete document: %v", err)
+	}
+
+	terminal := ingestor.runTask(t.Context(), &entity.IngestionTask{
+		ID: taskID, DocumentID: docID, DatasetID: "kb-1", Status: common.RUNNING,
+	})
+	if !terminal {
+		t.Fatal("expected true (retry against a deleted document must settle terminally so the message is Acked)")
+	}
+
+	task, err := dao.NewIngestionTaskDAO().GetByID(t.Context(), db, taskID)
+	if err != nil {
+		t.Fatalf("load task: %v", err)
+	}
+	if task.Status != common.FAILED {
+		t.Fatalf("task status = %s, want FAILED (the retry must not leave the task RUNNING behind a vanished document)", task.Status)
+	}
+
+	// The document must stay deleted — nothing in the retry path may
+	// resurrect or write it.
+	var count int64
+	if err := db.Model(&entity.Document{}).Where("id = ?", docID).Count(&count).Error; err != nil {
+		t.Fatalf("count documents: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("document %s was resurrected by the retry; want no document write", docID)
+	}
+}
+
 // TestRunTask_CancelDocSettleFailureKeepsTaskRunning applies the same
 // data-integrity rule to the cancel path: a failed document cancel-write
 // must not Ack the task either.
