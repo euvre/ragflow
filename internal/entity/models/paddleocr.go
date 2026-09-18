@@ -254,6 +254,10 @@ func (p *PaddleOCRModel) OCRFile(ctx context.Context, modelName *string, content
 		return nil, fmt.Errorf("content and fileURL cannot be both empty")
 	}
 
+	if apiConfig == nil || *apiConfig.BaseURL == "" {
+		return nil, fmt.Errorf("%s requires a base url from the tenant PaddleOCR OCR model or PADDLEOCR_BASE_URL", p.Name())
+	}
+
 	resolvedBaseURL, err := p.baseModel.GetBaseURL(apiConfig)
 	if err != nil {
 		return nil, err
@@ -594,8 +598,8 @@ func paddleOCRConfigFromAPIKey(apiKey string) (baseURL, accessToken, algorithm s
 // drivers: the bearer token comes from the api_key JSON payload when present,
 // and the base url falls back from the instance field through the payload to
 // the PADDLEOCR_BASE_URL / PADDLEOCR_API_URL env vars. A plain-text api_key
-// passes through untouched; an empty base url is left for the driver's catalog
-// default.
+// passes through untouched; the drivers reject an empty resolved base url with
+// a configuration error instead of falling back to a provider catalog url.
 func paddleOCRResolvedAPIConfig(apiConfig *APIConfig) *APIConfig {
 	if apiConfig == nil {
 		return nil

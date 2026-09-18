@@ -109,6 +109,10 @@ func (p *PaddleOCRLocalModel) OCRFile(ctx context.Context, modelName *string, co
 	algorithm := paddleOCRAlgorithm(ocrConfig, apiConfig)
 	apiConfig = paddleOCRResolvedAPIConfig(apiConfig)
 
+	if apiConfig == nil || *apiConfig.BaseURL == "" {
+		return nil, fmt.Errorf("%s requires a base url from the tenant PaddleOCR OCR model or PADDLEOCR_BASE_URL", p.Name())
+	}
+
 	resolvedBaseURL, err := p.baseModel.GetBaseURL(apiConfig)
 	if err != nil {
 		return nil, err

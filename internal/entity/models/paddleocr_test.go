@@ -337,6 +337,45 @@ func TestPaddleOCRLocalModelOCRFileResolvesPayload(t *testing.T) {
 	}
 }
 
+// TestPaddleOCROCRFileRequiresBaseURL pins the explicit configuration error a
+// missing base url produces: neither driver may fall through to a provider
+// catalog default or the generic region error.
+func TestPaddleOCROCRFileRequiresBaseURL(t *testing.T) {
+	t.Run("cloud does not fall back to the catalog default", func(t *testing.T) {
+		driver := NewPaddleOCRModel(map[string]string{"default": "https://paddleocr.aistudio-app.com/api"}, URLSuffix{OCR: "v2/ocr/jobs"})
+		apiKey := `{"paddleocr_access_token":"tok-123"}`
+		emptyBaseURL := ""
+		modelName := "PaddleOCR-VL-1.6"
+
+		_, err := driver.OCRFile(context.Background(), &modelName, []byte("%PDF-1.4"), nil, &APIConfig{ApiKey: &apiKey, BaseURL: &emptyBaseURL}, nil, nil)
+		if err == nil || !strings.Contains(err.Error(), "requires a base url") {
+			t.Fatalf("OCRFile err = %v, want requires a base url", err)
+		}
+	})
+
+	t.Run("local reports the configuration error", func(t *testing.T) {
+		driver := NewPaddleOCRLocalModel(nil, URLSuffix{OCR: "layout-parsing"})
+		apiKey := "tok-local"
+		emptyBaseURL := ""
+		modelName := "PaddleOCR-VL"
+
+		_, err := driver.OCRFile(context.Background(), &modelName, []byte("%PDF-1.4"), nil, &APIConfig{ApiKey: &apiKey, BaseURL: &emptyBaseURL}, nil, nil)
+		if err == nil || !strings.Contains(err.Error(), "requires a base url") {
+			t.Fatalf("OCRFile err = %v, want requires a base url", err)
+		}
+	})
+
+	t.Run("nil api config reports the configuration error", func(t *testing.T) {
+		driver := NewPaddleOCRModel(map[string]string{"default": "https://paddleocr.aistudio-app.com/api"}, URLSuffix{OCR: "v2/ocr/jobs"})
+		modelName := "PaddleOCR-VL-1.6"
+
+		_, err := driver.OCRFile(context.Background(), &modelName, []byte("%PDF-1.4"), nil, nil, nil, nil)
+		if err == nil || !strings.Contains(err.Error(), "requires a base url") {
+			t.Fatalf("OCRFile err = %v, want requires a base url", err)
+		}
+	})
+}
+
 func TestParseOCRResultBodyArray(t *testing.T) {
 	p := &PaddleOCRModel{}
 	var md strings.Builder
